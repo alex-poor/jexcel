@@ -15,7 +15,9 @@ interface Props {
 export function TimeframeTimeline({ data, years, theme, height = 260, animated = false }: Props) {
   const { tt, wrap } = useTooltip();
   const W = 620;
-  const rowH = Math.min(38, (height - 60) / years.length);
+  // Floor rowH at 14 so labels never overlap when we're showing lots of years.
+  // H is computed from rowH below, so the SVG grows vertically if needed.
+  const rowH = Math.max(14, Math.min(38, (height - 60) / years.length));
   const pad = { t: 18, r: 80, b: 34, l: 56 };
   const totals = years.map((y) => (data[y]?.lag || 0) + (data[y]?.closure || 0));
   const max = Math.max(...totals, 10);

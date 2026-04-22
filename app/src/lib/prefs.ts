@@ -86,7 +86,7 @@ export const prefs = {
     set: (v: LastFile | null) => write("last-file", v),
   },
   yearWindow: {
-    get: (): YearWindowPreset => read("year-window") ?? "rolling_5",
+    get: (): YearWindowPreset => read("year-window") ?? "all",
     set: (v: YearWindowPreset) => write("year-window", v),
   },
   checkOnLaunch: {

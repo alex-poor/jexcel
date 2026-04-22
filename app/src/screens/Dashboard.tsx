@@ -44,7 +44,9 @@ export function Dashboard({
   onOpenSettings,
   onNewFile,
 }: Props) {
-  const years = summary.years.length ? summary.years : Object.keys(sliceData.count).map(Number);
+  // Drive the chart x-axis from the slice itself so the years match the
+  // active window preset, not the full range of years in the dataset.
+  const years = Object.keys(sliceData.count).map(Number).sort((a, b) => a - b);
   const breadcrumb = useMemo<string[]>(() => {
     if (sliceId === "all") return ["All departments"];
     const path = findPath(hierarchy, sliceId);
@@ -52,7 +54,7 @@ export function Dashboard({
   }, [sliceId, hierarchy]);
 
   const rowCount = Object.values(sliceData.count).reduce((a, b) => a + b, 0);
-  const gap = density === "compact" ? 14 : 18;
+  const gap = density === "compact" ? 10 : 14;
 
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
@@ -71,7 +73,7 @@ export function Dashboard({
       <div style={{ flex: 1, overflow: "auto", background: theme.bg }}>
         <div
           style={{
-            padding: density === "compact" ? 18 : 24,
+            padding: density === "compact" ? 14 : 18,
             display: "flex",
             flexDirection: "column",
             gap,
@@ -150,7 +152,7 @@ export function Dashboard({
             }
             exportName="timeframe-analysis"
           >
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap }}>
               <div>
                 <div
                   style={{
@@ -169,10 +171,10 @@ export function Dashboard({
                   data={sliceData.timeframe}
                   years={years}
                   theme={theme}
+                  height={220}
                   animated={animated}
                 />
               </div>
-              <div style={{ height: 1, background: theme.border, margin: "4px 0" }} />
               <div>
                 <div
                   style={{
@@ -191,6 +193,7 @@ export function Dashboard({
                   data={sliceData.timeframe}
                   years={years}
                   theme={theme}
+                  height={220}
                   animated={animated}
                 />
               </div>

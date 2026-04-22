@@ -12,7 +12,7 @@ interface Props {
 }
 
 export function Card({ theme, density = "comfortable", title, subtitle, right, children, noPad }: Props) {
-  const pad = density === "compact" ? 16 : 22;
+  const pad = density === "compact" ? 12 : 16;
   return (
     <div
       style={{

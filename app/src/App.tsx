@@ -30,7 +30,7 @@ export default function App() {
   const density: "comfortable" | "compact" = "comfortable";
 
   const [checkOnLaunch] = usePref("check-on-launch", true);
-  const [yearPreset] = usePref<"year-window">("year-window", "rolling_5");
+  const [yearPreset] = usePref<"year-window">("year-window", "all");
 
   // Kept in state so we can widen it once the workbook summary lands (needed
   // for the "all" preset, which depends on the years present in the data).

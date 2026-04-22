@@ -13,7 +13,7 @@ export function VolumeChart({ data, years, theme, height = 180 }: Props) {
   const { tt, wrap } = useTooltip();
   const W = 620;
   const H = height;
-  const pad = { t: 24, r: 16, b: 32, l: 44 };
+  const pad = { t: 28, r: 16, b: 32, l: 44 };
   const max = Math.max(...years.map((y) => data[y] || 0));
   const bw = (W - pad.l - pad.r) / years.length;
   const yTicks = [0, max * 0.5, max].map((v) => Math.round(v / 50) * 50);
@@ -74,7 +74,7 @@ export function VolumeChart({ data, years, theme, height = 180 }: Props) {
               />
               <text
                 x={x + w / 2}
-                y={y - 6}
+                y={y - 8}
                 textAnchor="middle"
                 fontSize="12"
                 fill={theme.ink}
@@ -82,6 +82,17 @@ export function VolumeChart({ data, years, theme, height = 180 }: Props) {
                 fontWeight={600}
               >
                 {v.toLocaleString()}
+                {d != null && !partial && (
+                  <tspan
+                    fontSize="10"
+                    fill={d > 0 ? theme.harm : theme.accentInk}
+                    fontFamily={theme.sansFont}
+                    dx={4}
+                  >
+                    {d > 0 ? "▲" : "▼"}
+                    {Math.abs(d * 100).toFixed(1)}%
+                  </tspan>
+                )}
               </text>
               <text
                 x={x + w / 2}
@@ -94,19 +105,6 @@ export function VolumeChart({ data, years, theme, height = 180 }: Props) {
                 {yr}
                 {partial ? " · YTD" : ""}
               </text>
-              {d != null && !partial && (
-                <text
-                  x={x + w / 2}
-                  y={y - 22}
-                  textAnchor="middle"
-                  fontSize="10"
-                  fill={d > 0 ? theme.harm : theme.accentInk}
-                  fontFamily={theme.sansFont}
-                  fontWeight={600}
-                >
-                  {d > 0 ? "▲" : "▼"} {Math.abs(d * 100).toFixed(1)}%
-                </text>
-              )}
             </g>
           );
         })}
