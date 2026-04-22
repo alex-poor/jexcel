@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Incident Reporting — hi-fi mockups</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600;6..72,700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&family=Instrument+Serif:wght@400&family=Literata:opsz,wght@7..72,400;7..72,500;7..72,600;7..72,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; background: #f0eee9; font-family: "Inter", sans-serif; }
+  * { box-sizing: border-box; }
+  button { font: inherit; }
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="tokens.js"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="charts.jsx"></script>
+<script type="text/babel" src="shell.jsx"></script>
+<script type="text/babel" src="expandable.jsx"></script>
+<script type="text/babel" src="screen-landing.jsx"></script>
+<script type="text/babel" src="screen-dashboard.jsx"></script>
+<script type="text/babel" src="screen-settings.jsx"></script>
+
+<script type="text/babel" data-presets="react">
+/*EDITMODE-BEGIN*/
+const TWEAK_DEFAULTS = {
+  "accent_warm": "#0b7a74",
+  "accent_neutral": "#2e5bff",
+  "density": "comfortable",
+  "focus_screen": "all",
+  "num_font_warm": "Newsreader"
+};
+/*EDITMODE-END*/
+
+const { useState, useEffect, useMemo } = React;
+
+function App() {
+  const [tweaks, setTweaks] = useState(TWEAK_DEFAULTS);
+  const [editMode, setEditMode] = useState(false);
+
+  // Build themes with the tweaked accent
+  const themes = useMemo(() => {
+    const warm = { ...THEMES.warm, accent: tweaks.accent_warm, numFont: `"${tweaks.num_font_warm}", Georgia, serif` };
+    const neutral = { ...THEMES.neutral, accent: tweaks.accent_neutral };
+    // keep accentSoft reasonable; derive a light tint from accent
+    warm.accentSoft = hexTint(warm.accent, 0.85);
+    warm.accentInk = hexTint(warm.accent, -0.2);
+    warm.closure = warm.accent;
+    warm.nearMiss = warm.accent;
+    warm.nearMissSoft = warm.accentSoft;
+    warm.cat = [warm.accent, ...THEMES.warm.cat.slice(1)];
+    neutral.accentSoft = hexTint(neutral.accent, 0.88);
+    neutral.accentInk = hexTint(neutral.accent, -0.2);
+    neutral.closure = neutral.accent;
+    neutral.nearMiss = neutral.accent;
+    neutral.nearMissSoft = neutral.accentSoft;
+    neutral.cat = [neutral.accent, ...THEMES.neutral.cat.slice(1)];
+    return { warm, neutral };
+  }, [tweaks.accent_warm, tweaks.accent_neutral]);
+
+  const density = tweaks.density;
+
+  // Edit mode wiring
+  useEffect(() => {
+    const onMessage = (e) => {
+      if (e.data?.type === '__activate_edit_mode') setEditMode(true);
+      if (e.data?.type === '__deactivate_edit_mode') setEditMode(false);
+    };
+    window.addEventListener('message', onMessage);
+    window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+    return () => window.removeEventListener('message', onMessage);
+  }, []);
+
+  const persist = (edits) => {
+    setTweaks((t) => ({ ...t, ...edits }));
+    window.parent.postMessage({ type: '__edit_mode_set_keys', edits }, '*');
+  };
+
+  // Sidebar state (shared so all dashboards toggle together when focused)
+  const [selectedAll, setSelectedAll] = useState('all');
+  const [expandedAll, setExpandedAll] = useState({});
+  const [selectedSlice, setSelectedSlice] = useState('theatre-suite');
+  const [expandedSlice, setExpandedSlice] = useState({ theatre: true });
+
+  const toggleAll = (id) => setExpandedAll((x) => ({ ...x, [id]: !x[id] }));
+  const toggleSlice = (id) => setExpandedSlice((x) => ({ ...x, [id]: !x[id] }));
+
+  // Helper to render an app artboard
+  const appFrame = (theme, content, title) => (
+    <WindowChrome theme={theme} accent={theme.accent} title={title}>
+      {content}
+    </WindowChrome>
+  );
+
+  // Filter artboards by focus_screen tweak
+  const showGroup = (id) => tweaks.focus_screen === 'all' || tweaks.focus_screen === id;
+
+  return (
+    <DesignCanvas>
+
+      {/* ───── LANDING ───── */}
+      {showGroup('landing') && (
+        <DCSection id="landing" title="① Landing / empty state"
+                   subtitle="Whole-window drop zone. The app has nothing to show yet.">
+          <DCArtboard id="landing-warm" label="A · Warm Clinical — teal accent, serif numerals" width={WINDOW_W} height={WINDOW_H}>
+            {appFrame(themes.warm, <LandingScreen theme={themes.warm} density={density} />, 'Incident Reporting')}
+          </DCArtboard>
+          <DCArtboard id="landing-neutral" label="B · Neutral Pro — cool grey, all-sans" width={WINDOW_W} height={WINDOW_H}>
+            {appFrame(themes.neutral, <LandingScreen theme={themes.neutral} density={density} />, 'Incident Reporting')}
+          </DCArtboard>
+          <DCArtboard id="processing-warm" label="A · Processing state — shimmer" width={WINDOW_W} height={WINDOW_H}>
+            {appFrame(themes.warm, <LandingScreen theme={themes.warm} density={density} variant="processing" />, 'Incident Reporting')}
+          </DCArtboard>
+        </DCSection>
+      )}
+
+      {/* ───── DASHBOARD — ALL ORG ───── */}
+      {showGroup('dashboard-all') && (
+        <DCSection id="dashboard-all" title="② Dashboard · All departments"
+                   subtitle="Whole-org view, last 5 calendar years. Timeline hero chart.">
+          <DCArtboard id="dash-all-warm" label="A · Warm Clinical — timeline hero" width={WINDOW_W} height={WINDOW_H}>
+            {appFrame(themes.warm,
+              <React.Fragment>
+                <Sidebar theme={themes.warm} density={density} hierarchy={SAMPLE.hierarchy}
+                         selected={selectedAll} onSelect={setSelectedAll}
+                         expanded={expandedAll} onToggle={toggleAll} />
+                <Dashboard theme={themes.warm} density={density} sliceId={selectedAll} heroVariant="timeline" />
+              </React.Fragment>,
+              'Incident Reporting · ' + SAMPLE.file
+            )}
+          </DCArtboard>
+          <DCArtboard id="dash-all-neutral" label="B · Neutral Pro — timeline hero" width={WINDOW_W} height={WINDOW_H}>
+            {appFrame(themes.neutral,
+              <React.Fragment>
+                <Sidebar theme={themes.neutral} density={density} hierarchy={SAMPLE.hierarchy}
+                         selected={selectedAll} onSelect={setSelectedAll}
+                         expanded={expandedAll} onToggle={toggleAll} />
+                <Dashboard theme={themes.neutral} density={density} sliceId={selectedAll} heroVariant="timeline" />
+              </React.Fragment>,
+              'Incident Reporting · ' + SAMPLE.file
+            )}
+          </DCArtboard>
+        </DCSection>
+      )}
+
+      {/* ───── DASHBOARD — DRILLED IN ───── */}
+      {showGroup('dashboard-drill') && (
+        <DCSection id="dashboard-drill" title="③ Dashboard · Theatre › Theatre Suite"
+                   subtitle="Same layout, drilled into a level-2 slice. Every chart updates in place.">
+          <DCArtboard id="dash-drill-warm" label="A · Warm Clinical — drilled in" width={WINDOW_W} height={WINDOW_H}>
+            {appFrame(themes.warm,
+              <React.Fragment>
+                <Sidebar theme={themes.warm} density={density} hierarchy={SAMPLE.hierarchy}
+                         selected={selectedSlice} onSelect={setSelectedSlice}
+                         expanded={expandedSlice} onToggle={toggleSlice} />
+                <Dashboard theme={themes.warm} density={density} sliceId={selectedSlice} heroVariant="timeline" />
+              </React.Fragment>,
+              'Incident Reporting · ' + SAMPLE.file
+            )}
+          </DCArtboard>
+          <DCArtboard id="dash-drill-neutral" label="B · Neutral Pro — drilled in" width={WINDOW_W} height={WINDOW_H}>
+            {appFrame(themes.neutral,
+              <React.Fragment>
+                <Sidebar theme={themes.neutral} density={density} hierarchy={SAMPLE.hierarchy}
+                         selected={selectedSlice} onSelect={setSelectedSlice}
+                         expanded={expandedSlice} onToggle={toggleSlice} />
+                <Dashboard theme={themes.neutral} density={density} sliceId={selectedSlice} heroVariant="timeline" />
+              </React.Fragment>,
+              'Incident Reporting · ' + SAMPLE.file
+            )}
+          </DCArtboard>
+        </DCSection>
+      )}
+
+      {/* ───── HERO CHART — LOCKED IN ───── */}
+      {showGroup('hero') && (
+        <DCSection id="hero" title="④ Timeframe Analysis — locked in"
+                   subtitle="Both the horizontal timeline and the slope/trajectory, stacked. This is what renders in the main dashboard.">
+          <DCArtboard id="hero-timeline" label="Timeline · per-year lag + closure" width={760} height={360}>
+            <HeroOnly theme={themes.warm} density={density}>
+              <TimeframeTimeline data={SAMPLE.org.timeframe} years={SAMPLE.years} theme={themes.warm} />
+            </HeroOnly>
+          </DCArtboard>
+          <DCArtboard id="hero-slope" label="Slope · trajectory over years" width={760} height={360}>
+            <HeroOnly theme={themes.warm} density={density}>
+              <TimeframeSlope data={SAMPLE.org.timeframe} years={SAMPLE.years} theme={themes.warm} />
+            </HeroOnly>
+          </DCArtboard>
+          <DCArtboard id="hero-combined" label="As rendered in the dashboard — stacked" width={760} height={760}>
+            <HeroOnly theme={themes.warm} density={density}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div>
+                  <div style={{ fontSize: 11, color: themes.warm.ink3, textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.04em', marginBottom: 6, fontFamily: themes.warm.sansFont }}>Per-year timeline · lag + closure</div>
+                  <TimeframeTimeline data={SAMPLE.org.timeframe} years={SAMPLE.years} theme={themes.warm} />
+                </div>
+                <div style={{ height: 1, background: themes.warm.border, margin: '4px 0' }} />
+                <div>
+                  <div style={{ fontSize: 11, color: themes.warm.ink3, textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.04em', marginBottom: 6, fontFamily: themes.warm.sansFont }}>Trajectory over years</div>
+                  <TimeframeSlope data={SAMPLE.org.timeframe} years={SAMPLE.years} theme={themes.warm} />
+                </div>
+              </div>
+            </HeroOnly>
+          </DCArtboard>
+        </DCSection>
+      )}
+
+      {/* ───── SETTINGS ───── */}
+      {showGroup('settings') && (
+        <DCSection id="settings" title="⑤ Settings"
+                   subtitle="Plain, legible preferences. Everything local.">
+          <DCArtboard id="settings-warm" label="A · Warm Clinical" width={WINDOW_W} height={WINDOW_H}>
+            {appFrame(themes.warm,
+              <React.Fragment>
+                <Sidebar theme={themes.warm} density={density} hierarchy={SAMPLE.hierarchy}
+                         selected={selectedAll} onSelect={setSelectedAll}
+                         expanded={expandedAll} onToggle={toggleAll} />
+                <SettingsScreen theme={themes.warm} density={density} />
+              </React.Fragment>,
+              'Incident Reporting · Settings'
+            )}
+          </DCArtboard>
+          <DCArtboard id="settings-neutral" label="B · Neutral Pro" width={WINDOW_W} height={WINDOW_H}>
+            {appFrame(themes.neutral,
+              <React.Fragment>
+                <Sidebar theme={themes.neutral} density={density} hierarchy={SAMPLE.hierarchy}
+                         selected={selectedAll} onSelect={setSelectedAll}
+                         expanded={expandedAll} onToggle={toggleAll} />
+                <SettingsScreen theme={themes.neutral} density={density} />
+              </React.Fragment>,
+              'Incident Reporting · Settings'
+            )}
+          </DCArtboard>
+        </DCSection>
+      )}
+
+      {/* ───── STATES + FOOTER VARIANTS ───── */}
+      {showGroup('states') && (
+        <DCSection id="states" title="⑥ Dashboard states & footer"
+                   subtitle="Empty / error / offline — edge cases the clinician must not see crash.">
+          <DCArtboard id="state-empty-year" label="Empty year in slice — chart gracefully labels it" width={760} height={360}>
+            <HeroOnly theme={themes.warm} density={density}>
+              <TimeframeTimeline data={{ 2022: null, 2023: SAMPLE.org.timeframe[2023], 2024: SAMPLE.org.timeframe[2024], 2025: SAMPLE.org.timeframe[2025], 2026: SAMPLE.org.timeframe[2026] }} years={SAMPLE.years} theme={themes.warm} />
+            </HeroOnly>
+          </DCArtboard>
+          <DCArtboard id="state-error" label="Error state — bad file" width={760} height={360}>
+            <ErrorState theme={themes.warm} />
+          </DCArtboard>
+          <DCArtboard id="state-footer" label="Update footer — three states" width={760} height={240}>
+            <FooterStates themes={themes} />
+          </DCArtboard>
+        </DCSection>
+      )}
+
+      {/* ───── TOKENS ───── */}
+      {showGroup('tokens') && (
+        <DCSection id="tokens" title="⑦ Tokens — codify these as CSS variables"
+                   subtitle="Minimal set. Two accent options, one type scale, one spacing scale.">
+          <DCArtboard id="tokens-warm" label="A · Warm Clinical tokens" width={760} height={560}>
+            <TokensCard theme={themes.warm} />
+          </DCArtboard>
+          <DCArtboard id="tokens-neutral" label="B · Neutral Pro tokens" width={760} height={560}>
+            <TokensCard theme={themes.neutral} />
+          </DCArtboard>
+          <DCArtboard id="chart-rec" label="Chart library recommendation" width={760} height={560}>
+            <ChartRecCard theme={themes.warm} />
+          </DCArtboard>
+        </DCSection>
+      )}
+
+      {editMode && (
+        <TweaksPanel tweaks={tweaks} setTweaks={persist} />
+      )}
+    </DesignCanvas>
+  );
+}
+
+// ── Hero-chart-only wrapper ───────────────────────
+function HeroOnly({ theme, density, children }) {
+  return (
+    <div style={{ width: '100%', height: '100%', background: theme.bg, padding: 20, fontFamily: theme.sansFont, overflow: 'auto' }}>
+      <div style={{ background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 10, padding: 22 }}>
+        <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <div style={{ fontFamily: theme.numFont, fontSize: 16, fontWeight: 600, color: theme.ink }}>Timeframe analysis</div>
+            <div style={{ fontSize: 12, color: theme.ink3, marginTop: 3 }}>How quickly incidents are reported and closed. Shorter = better.</div>
+          </div>
+          <Legend theme={theme} items={[{c: theme.lag, l: 'Reporting lag'}, {c: theme.closure, l: 'Closure duration'}]} />
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// ── Error state ───────────────────────────────────
+function ErrorState({ theme }) {
+  return (
+    <div style={{ width: '100%', height: '100%', background: theme.bg, padding: 20, fontFamily: theme.sansFont, display: 'grid', placeItems: 'center' }}>
+      <div style={{ background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 10, padding: 32, maxWidth: 540, textAlign: 'center' }}>
+        <div style={{
+          width: 44, height: 44, borderRadius: 22,
+          background: theme.harmSoft, color: theme.harm,
+          display: 'grid', placeItems: 'center',
+          margin: '0 auto 14px', fontSize: 22, fontWeight: 600,
+          fontFamily: theme.numFont,
+        }}>!</div>
+        <div style={{ fontFamily: theme.numFont, fontSize: 20, fontWeight: 500, color: theme.ink }}>
+          This doesn't look like a Notify export
+        </div>
+        <div style={{ fontSize: 13, color: theme.ink2, marginTop: 10, lineHeight: 1.5 }}>
+          I couldn't find the expected columns (Incident ID, Department, Occurred, Reported…). Drop a different file, or see the columns we expect in the technical appendix.
+        </div>
+        <div style={{ fontFamily: theme.monoFont, fontSize: 11, color: theme.ink3, background: theme.surfaceAlt, border: `1px solid ${theme.border}`, padding: '8px 10px', borderRadius: 6, marginTop: 14, textAlign: 'left' }}>
+          Found columns: ID, Date, Location, Severity, Notes<br />
+          Missing: Department, Occurred, Reported, Closed, Type, Sub-category
+        </div>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 18 }}>
+          <Button theme={theme} primary>Try another file</Button>
+          <Button theme={theme}>Open technical appendix</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Footer states showcase ────────────────────────
+function FooterStates({ themes }) {
+  const t = themes.warm;
+  return (
+    <div style={{ width: '100%', height: '100%', background: t.bg, padding: 20, fontFamily: t.sansFont, display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {['uptodate', 'available', 'offline'].map((state) => (
+        <div key={state} style={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: 8 }}>
+          <UpdateFooter theme={t} state={state} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Tokens card ───────────────────────────────────
+function TokensCard({ theme }) {
+  const colorRows = [
+    ['--bg', theme.bg], ['--surface', theme.surface], ['--surface-alt', theme.surfaceAlt],
+    ['--border', theme.border], ['--ink', theme.ink], ['--ink-2', theme.ink2], ['--ink-3', theme.ink3],
+    ['--accent', theme.accent], ['--accent-soft', theme.accentSoft],
+    ['--harm', theme.harm], ['--near-miss', theme.nearMiss],
+  ];
+  return (
+    <div style={{ width: '100%', height: '100%', background: theme.bg, padding: 20, fontFamily: theme.sansFont, overflow: 'auto' }}>
+      <div style={{ background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 10, padding: 22 }}>
+        <div style={{ fontFamily: theme.numFont, fontSize: 18, fontWeight: 600, color: theme.ink }}>{theme.name}</div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, marginTop: 16 }}>
+          <div>
+            <SectionLabel theme={theme}>Colour</SectionLabel>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {colorRows.map(([n, v]) => (
+                <div key={n} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: theme.ink2 }}>
+                  <div style={{ width: 22, height: 22, borderRadius: 4, background: v, border: `1px solid ${theme.border}` }} />
+                  <code style={{ fontFamily: theme.monoFont, color: theme.ink, fontSize: 11, minWidth: 110 }}>{n}</code>
+                  <code style={{ fontFamily: theme.monoFont, color: theme.ink3, fontSize: 11 }}>{v}</code>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div>
+            <SectionLabel theme={theme}>Type</SectionLabel>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div>
+                <div style={{ fontFamily: theme.numFont, fontSize: 30, fontWeight: 500, color: theme.ink, letterSpacing: '-0.01em' }}>76.61 days</div>
+                <div style={{ fontSize: 11, color: theme.ink3, marginTop: 2 }}>Display · {theme.numFont.split(',')[0]} 30/500</div>
+              </div>
+              <div>
+                <div style={{ fontFamily: theme.numFont, fontSize: 18, fontWeight: 600, color: theme.ink }}>Section title</div>
+                <div style={{ fontSize: 11, color: theme.ink3, marginTop: 2 }}>Title · 18/600</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 14, color: theme.ink2, lineHeight: 1.5 }}>Body text for clinical-modern interfaces.</div>
+                <div style={{ fontSize: 11, color: theme.ink3, marginTop: 2 }}>Body · 14/400</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 11, color: theme.ink3, textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.04em' }}>Caption label</div>
+                <div style={{ fontSize: 11, color: theme.ink3, marginTop: 2 }}>Caption · 11/600 · 0.04em tracking · uppercase</div>
+              </div>
+            </div>
+            <div style={{ marginTop: 18 }}>
+              <SectionLabel theme={theme}>Spacing</SectionLabel>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+                {[4, 8, 12, 16, 24, 32].map((n) => (
+                  <div key={n} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                    <div style={{ width: n, height: n, background: theme.accent, borderRadius: 2 }} />
+                    <code style={{ fontSize: 10, color: theme.ink3, fontFamily: theme.monoFont }}>{n}</code>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div style={{ marginTop: 18 }}>
+              <SectionLabel theme={theme}>Radius</SectionLabel>
+              <div style={{ display: 'flex', gap: 10 }}>
+                {[4, 6, 10].map((r) => (
+                  <div key={r} style={{ width: 44, height: 44, background: theme.surfaceAlt, border: `1px solid ${theme.border}`, borderRadius: r, display: 'grid', placeItems: 'center', fontSize: 10, color: theme.ink3, fontFamily: theme.monoFont }}>{r}</div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SectionLabel({ theme, children }) {
+  return <div style={{ fontSize: 10, color: theme.ink3, textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.06em', marginBottom: 10 }}>{children}</div>;
+}
+
+// ── Chart lib recommendation ─────────────────────
+function ChartRecCard({ theme }) {
+  return (
+    <div style={{ width: '100%', height: '100%', background: theme.bg, padding: 20, fontFamily: theme.sansFont, overflow: 'auto' }}>
+      <div style={{ background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 10, padding: 24 }}>
+        <div style={{ fontFamily: theme.numFont, fontSize: 18, fontWeight: 600, color: theme.ink }}>Chart library</div>
+        <div style={{ fontSize: 12, color: theme.ink3, marginTop: 3 }}>Recommendation for the Tauri webview.</div>
+
+        <div style={{ marginTop: 16, padding: 14, background: theme.accentSoft, borderRadius: 8 }}>
+          <div style={{ fontSize: 11, color: theme.accentInk, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Our pick</div>
+          <div style={{ fontFamily: theme.numFont, fontSize: 22, fontWeight: 600, color: theme.accentInk, marginTop: 4 }}>Observable Plot + a sprinkle of D3</div>
+        </div>
+
+        <div style={{ fontSize: 13, color: theme.ink2, lineHeight: 1.55, marginTop: 16 }}>
+          Plot is a grammar-of-graphics layer over D3. Each chart in this brief is a 15–30-line
+          declaration. Types render as crisp SVG, responsive resizing is first-class, print export
+          works because output is vector. For the one chart that needs bespoke layout (the Timeframe
+          timeline), drop down to D3 directly — Plot and D3 share selection APIs so there's no
+          boundary cost. Tooltips can be accessible via a tiny wrapper that mirrors the focused
+          element's data to an ARIA-live region.
+        </div>
+
+        <div style={{ marginTop: 18 }}>
+          <SectionLabel theme={theme}>Alternatives considered</SectionLabel>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 12 }}>
+            <Alt theme={theme} name="Recharts" verdict="No — rigid component API; the timeline chart would fight it. Print rendering is crude."/>
+            <Alt theme={theme} name="ECharts" verdict="Powerful, but the defaults look 2015-Bootstrap. Theming it to clinical-modern is significant work."/>
+            <Alt theme={theme} name="Visx" verdict="Close second. More React-idiomatic than Plot. Pick this if the team strongly prefers primitives-first."/>
+            <Alt theme={theme} name="D3-only" verdict="Overkill for the 6 standard charts. Keep it for the hero."/>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+function Alt({ theme, name, verdict }) {
+  return (
+    <div style={{ display: 'flex', gap: 12, padding: '8px 0', borderTop: `1px solid ${theme.border}` }}>
+      <div style={{ width: 80, color: theme.ink, fontWeight: 600 }}>{name}</div>
+      <div style={{ flex: 1, color: theme.ink2 }}>{verdict}</div>
+    </div>
+  );
+}
+
+// ── Tweaks panel ─────────────────────────────────
+function TweaksPanel({ tweaks, setTweaks }) {
+  const theme = THEMES.warm;
+  return (
+    <div style={{
+      position: 'fixed', right: 18, bottom: 18, width: 280,
+      background: theme.surface, border: `1px solid ${theme.border}`, borderRadius: 10,
+      boxShadow: '0 20px 60px -20px rgba(0,0,0,.3)',
+      padding: 16, fontFamily: theme.sansFont, color: theme.ink,
+      zIndex: 100,
+    }}>
+      <div style={{ fontFamily: theme.numFont, fontWeight: 600, fontSize: 14, marginBottom: 12 }}>Tweaks</div>
+
+      <TField label="Warm accent">
+        <div style={{ display: 'flex', gap: 6 }}>
+          {['#0b7a74', '#2f6b8f', '#86476f', '#6e5a24', '#1f5f3a'].map((c) => (
+            <button key={c} onClick={() => setTweaks({ accent_warm: c })}
+                    style={{ width: 22, height: 22, borderRadius: 4, background: c, border: tweaks.accent_warm === c ? `2px solid ${theme.ink}` : `1px solid ${theme.border}`, cursor: 'pointer', padding: 0 }} />
+          ))}
+        </div>
+      </TField>
+
+      <TField label="Neutral accent">
+        <div style={{ display: 'flex', gap: 6 }}>
+          {['#2e5bff', '#6d4cff', '#0c8a7d', '#d04b4b', '#111827'].map((c) => (
+            <button key={c} onClick={() => setTweaks({ accent_neutral: c })}
+                    style={{ width: 22, height: 22, borderRadius: 4, background: c, border: tweaks.accent_neutral === c ? `2px solid ${theme.ink}` : `1px solid ${theme.border}`, cursor: 'pointer', padding: 0 }} />
+          ))}
+        </div>
+      </TField>
+
+      <TField label="Warm · numeral font">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {['Newsreader', 'Source Serif 4', 'Literata', 'Instrument Serif', 'Inter'].map((f) => (
+            <button key={f} onClick={() => setTweaks({ num_font_warm: f })}
+                    style={{
+                      padding: '6px 10px', fontSize: 13, borderRadius: 5, textAlign: 'left',
+                      border: `1px solid ${tweaks.num_font_warm === f ? theme.accent : theme.border}`,
+                      background: tweaks.num_font_warm === f ? theme.accentSoft : theme.surface,
+                      color: theme.ink, cursor: 'pointer',
+                      fontFamily: `"${f}", Georgia, serif`,
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+                    }}>
+              <span>{f}</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 14 }}>76.61d</span>
+            </button>
+          ))}
+        </div>
+      </TField>
+
+      <TField label="Density">
+        <div style={{ display: 'flex', gap: 6 }}>
+          {['comfortable', 'compact'].map((d) => (
+            <button key={d} onClick={() => setTweaks({ density: d })}
+                    style={{
+                      padding: '5px 10px', fontSize: 12, borderRadius: 5,
+                      border: `1px solid ${tweaks.density === d ? theme.accent : theme.border}`,
+                      background: tweaks.density === d ? theme.accentSoft : theme.surface,
+                      color: tweaks.density === d ? theme.accentInk : theme.ink2,
+                      cursor: 'pointer', fontFamily: theme.sansFont,
+                    }}>{d}</button>
+          ))}
+        </div>
+      </TField>
+
+      <TField label="Focus screen">
+        <select value={tweaks.focus_screen} onChange={(e) => setTweaks({ focus_screen: e.target.value })}
+                style={{ padding: '5px 8px', fontSize: 12, fontFamily: theme.sansFont, border: `1px solid ${theme.border}`, borderRadius: 5, background: theme.surface, color: theme.ink, width: '100%' }}>
+          <option value="all">All sections</option>
+          <option value="landing">① Landing</option>
+          <option value="dashboard-all">② Dashboard · all</option>
+          <option value="dashboard-drill">③ Dashboard · drilled</option>
+          <option value="hero">④ Hero chart options</option>
+          <option value="settings">⑤ Settings</option>
+          <option value="states">⑥ States</option>
+          <option value="tokens">⑦ Tokens</option>
+        </select>
+      </TField>
+    </div>
+  );
+}
+function TField({ label, children }) {
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ fontSize: 10, color: '#7a7264', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.06em', marginBottom: 6 }}>{label}</div>
+      {children}
+    </div>
+  );
+}
+
+// ── utilities ────────────────────────────────────
+function hexTint(hex, amt) {
+  // amt in [-1, 1]; positive lightens toward white, negative darkens toward black.
+  const c = hex.replace('#', '');
+  const r = parseInt(c.slice(0, 2), 16), g = parseInt(c.slice(2, 4), 16), b = parseInt(c.slice(4, 6), 16);
+  const mix = (x, t) => t >= 0 ? Math.round(x + (255 - x) * t) : Math.round(x * (1 + t));
+  const nr = mix(r, amt), ng = mix(g, amt), nb = mix(b, amt);
+  return '#' + [nr, ng, nb].map(v => v.toString(16).padStart(2, '0')).join('');
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

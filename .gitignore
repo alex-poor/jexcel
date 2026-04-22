@@ -1,0 +1,32 @@
+# Clinical data — must NEVER be committed.
+# The real files live in sibling ../jexcel-data/; this is belt-and-braces
+# for anything dropped here by accident.
+*.xlsx
+*.xlsm
+*.xls
+*.csv.real
+
+# Python venv (reference implementation)
+myenv/
+__pycache__/
+*.pyc
+
+# Node
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+
+# Rust
+app/src-tauri/target/
+**/target/
+
+# Design canvas zip drop
+jexcel.zip
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*.swo
