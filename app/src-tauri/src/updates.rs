@@ -17,7 +17,7 @@ const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
 const REPO_URL: Option<&str> = option_env!("CARGO_PKG_REPOSITORY");
 
 #[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase", tag = "state")]
+#[serde(tag = "state", rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum UpdateStatus {
     UpToDate {
         current_version: String,
