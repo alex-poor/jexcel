@@ -1,8 +1,9 @@
 import type { Theme } from "../../theme";
-import { useUpdates } from "../../hooks/useUpdates";
+import type { UseUpdatesResult } from "../../hooks/useUpdates";
 
 interface Props {
   theme: Theme;
+  updates: UseUpdatesResult;
 }
 
 function formatClock(d: Date): string {
@@ -15,8 +16,8 @@ function formatBytes(n: number): string {
   return `${(n / 1024 / 1024).toFixed(1)} MB`;
 }
 
-export function UpdateFooter({ theme }: Props) {
-  const { status, lastCheckedAt, recheck, downloadAndInstall } = useUpdates();
+export function UpdateFooter({ theme, updates }: Props) {
+  const { status, lastCheckedAt, recheck, downloadAndInstall } = updates;
 
   const label = (() => {
     switch (status.state) {

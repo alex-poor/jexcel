@@ -28,7 +28,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["nsis", "appimage"],
     "category": "Productivity",
     "shortDescription": "Hospital incident reporting — messy Excel in, clean trend reporting out.",
     "longDescription": "Desktop tool for hospital H&S teams. Ingests an incident-export .xlsx and produces modern trend reporting across the department hierarchy. Runs fully offline.",

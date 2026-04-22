@@ -1,24 +1,60 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { THEMES } from "./theme";
 import { Sidebar } from "./components/shell/Sidebar";
 import { LandingScreen } from "./screens/Landing";
 import { Dashboard } from "./screens/Dashboard";
 import { SettingsScreen } from "./screens/Settings";
 import { useWorkbook } from "./hooks/useWorkbook";
+import { useUpdates } from "./hooks/useUpdates";
+import { usePref, prefs, type YearWindowPreset } from "./lib/prefs";
 import { isTauri } from "./api/tauri";
 
 type View = "dashboard" | "settings";
+
+/** Turn the preset into a concrete years array (or null for the backend default). */
+function yearsFromPreset(
+  preset: YearWindowPreset,
+  availableYears: number[] | undefined,
+): number[] | null {
+  if (preset === "rolling_5") return null; // backend default = rolling 5
+  if (preset === "rolling_3") {
+    const y = new Date().getFullYear();
+    return [y - 2, y - 1, y];
+  }
+  if (preset === "all") return availableYears ?? null;
+  return null;
+}
 
 export default function App() {
   const theme = THEMES.warm;
   const density: "comfortable" | "compact" = "comfortable";
 
-  const wb = useWorkbook();
+  const [checkOnLaunch] = usePref("check-on-launch", true);
+  const [yearPreset] = usePref<"year-window">("year-window", "rolling_5");
+
+  // Kept in state so we can widen it once the workbook summary lands (needed
+  // for the "all" preset, which depends on the years present in the data).
+  // `null` means "let the Rust backend apply its default window".
+  const [yearsOverride, setYearsOverride] = useState<number[] | null>(() =>
+    yearsFromPreset(yearPreset, undefined),
+  );
+
+  const wb = useWorkbook({ years: yearsOverride });
+  const updates = useUpdates({ autoCheck: checkOnLaunch });
+
   const [view, setView] = useState<View>("dashboard");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
-  // Auto-expand the first level-1 group when hierarchy arrives so the user
-  // sees something useful straight away.
+  // Resync the years window whenever the preset changes or a new summary
+  // arrives (so "all" can pick up the real list of years in the data).
+  const summaryYearsKey = wb.summary?.years.join(",") ?? "";
+  useEffect(() => {
+    setYearsOverride(yearsFromPreset(yearPreset, wb.summary?.years));
+    // summaryYearsKey stands in for wb.summary.years reference stability.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [yearPreset, summaryYearsKey]);
+
+  // Auto-expand the first level-1 group when hierarchy arrives.
   useEffect(() => {
     if (wb.hierarchy.length > 0 && Object.keys(expanded).length === 0) {
       setExpanded({ [wb.hierarchy[0].id]: true });
@@ -47,6 +83,8 @@ export default function App() {
 
   const onToggle = (id: string) => setExpanded((m) => ({ ...m, [id]: !m[id] }));
 
+  const lastFile = useMemo(() => prefs.lastFile.get(), [wb.summary?.file]);
+
   // No workbook → landing screen.
   if (!wb.summary || !wb.sliceData) {
     return (
@@ -57,6 +95,8 @@ export default function App() {
           theme={theme}
           onPathChosen={(path) => wb.loadFromPath(path)}
           variant={wb.loading ? "processing" : "default"}
+          updates={updates}
+          lastFile={lastFile}
         />
       </div>
     );
@@ -83,12 +123,22 @@ export default function App() {
           sliceData={wb.sliceData}
           hierarchy={wb.hierarchy}
           summary={wb.summary}
+          updates={updates}
           onOpenSettings={() => setView("settings")}
-          onNewFile={() => wb.loadFromPath(":mock:")}
+          onNewFile={() => wb.unload()}
         />
       )}
       {view === "settings" && (
-        <SettingsScreen theme={theme} onClose={() => setView("dashboard")} />
+        <SettingsScreen
+          theme={theme}
+          summary={wb.summary}
+          updates={updates}
+          onUnload={() => {
+            wb.unload();
+            setView("dashboard");
+          }}
+          onClose={() => setView("dashboard")}
+        />
       )}
     </div>
   );

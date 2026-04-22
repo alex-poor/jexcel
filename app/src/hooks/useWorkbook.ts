@@ -6,14 +6,15 @@
  *   - the active slice filter (level1/level2 resolved from a slice id)
  *   - the computed SliceData for the current filter
  *
- * Works in the browser (Vite-only dev) by falling back to the mock SAMPLE
- * when `isTauri()` is false, so the UI keeps working without the Rust side.
+ * Also persists the last-loaded file record to localStorage so the Landing
+ * screen can offer a one-click reload on next launch. Cleared via `unload()`.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { HierarchyNode, SliceData } from "../data/sample";
-import { SAMPLE, findNode, resolveSlice } from "../data/sample";
+import { findNode, resolveSlice, SAMPLE } from "../data/sample";
 import {
+  clearWorkbook,
   getHierarchy,
   getSlice,
   isTauri,
@@ -21,6 +22,7 @@ import {
   parseWorkbook,
   type ParseSummary,
 } from "../api/tauri";
+import { prefs } from "../lib/prefs";
 
 export interface WorkbookState {
   summary: ParseSummary | null;
@@ -32,9 +34,14 @@ export interface WorkbookState {
 
   loadFromPath: (path: string) => Promise<void>;
   selectSlice: (id: string) => void;
+  unload: () => Promise<void>;
 }
 
-/** Fall-back summary when running in a browser (no Tauri backend). */
+export interface UseWorkbookOptions {
+  /** Years to aggregate over. `null` means "backend default" (rolling 5y). */
+  years?: number[] | null;
+}
+
 function fakeSummary(): ParseSummary {
   return {
     file: SAMPLE.file,
@@ -61,7 +68,7 @@ function resolveFilterFromId(
   return {};
 }
 
-export function useWorkbook(): WorkbookState {
+export function useWorkbook(options: UseWorkbookOptions = {}): WorkbookState {
   const [summary, setSummary] = useState<ParseSummary | null>(null);
   const [hierarchy, setHierarchy] = useState<HierarchyNode[]>([]);
   const [sliceId, setSliceId] = useState<string>("all");
@@ -69,17 +76,23 @@ export function useWorkbook(): WorkbookState {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Bump this to invalidate any in-flight slice request when the filter changes.
   const requestSeq = useRef(0);
 
-  /** Load hierarchy + initial "All" slice after a successful parse. */
+  // Stable key so changing a years-array reference doesn't thrash the
+  // slice effect if the values haven't changed.
+  const yearsKey = options.years ? options.years.join(",") : "default";
+
   const refreshAfterLoad = useCallback(async () => {
     if (!isTauri()) return;
     const tree = await getHierarchy();
     setHierarchy(tree);
     setSliceId("all");
-    const data = await getSlice({});
+    const data = await getSlice({ years: options.years ?? undefined });
     setSliceData(data);
+    // deps intentionally exclude options.years — the next filter-change
+    // effect will pick up the current years. Re-running this after mount
+    // isn't useful anyway; it's fire-once per load.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadFromPath = useCallback(
@@ -90,9 +103,9 @@ export function useWorkbook(): WorkbookState {
         if (isTauri()) {
           const s = await parseWorkbook(path);
           setSummary(s);
+          prefs.lastFile.set({ path, file: s.file, parsedAt: s.parsedAt });
           await refreshAfterLoad();
         } else {
-          // Browser-only dev: fake it with the bundled sample.
           setSummary(fakeSummary());
           setHierarchy(SAMPLE.hierarchy);
           setSliceId("all");
@@ -107,13 +120,26 @@ export function useWorkbook(): WorkbookState {
     [refreshAfterLoad],
   );
 
-  // First-mount: check if the backend already has a workbook cached
-  // (e.g. from a previous launch or a dev autoload).
+  const unload = useCallback(async () => {
+    if (isTauri()) {
+      try {
+        await clearWorkbook();
+      } catch {
+        /* forgive — we're resetting */
+      }
+    }
+    prefs.lastFile.set(null);
+    setSummary(null);
+    setHierarchy([]);
+    setSliceId("all");
+    setSliceData(null);
+    setError(null);
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
       if (!isTauri()) {
-        // Dev in plain browser — pretend we loaded the sample.
         if (!cancelled) {
           setSummary(fakeSummary());
           setHierarchy(SAMPLE.hierarchy);
@@ -136,7 +162,7 @@ export function useWorkbook(): WorkbookState {
     };
   }, [refreshAfterLoad]);
 
-  /** Refetch the slice whenever the filter changes. */
+  /** Refetch slice when filter or year window changes. */
   useEffect(() => {
     if (!summary) return;
     const mySeq = ++requestSeq.current;
@@ -148,14 +174,16 @@ export function useWorkbook(): WorkbookState {
     }
 
     const filter = resolveFilterFromId(hierarchy, sliceId);
-    getSlice(filter)
+    getSlice({ ...filter, years: options.years ?? undefined })
       .then((data) => {
         if (mySeq === requestSeq.current) setSliceData(data);
       })
       .catch((e) => {
         if (mySeq === requestSeq.current) setError(String(e));
       });
-  }, [sliceId, hierarchy, summary]);
+    // yearsKey stands in for options.years as a stable dep.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sliceId, hierarchy, summary, yearsKey]);
 
   const selectSlice = useCallback((id: string) => setSliceId(id), []);
 
@@ -169,8 +197,19 @@ export function useWorkbook(): WorkbookState {
       error,
       loadFromPath,
       selectSlice,
+      unload,
     }),
-    [summary, hierarchy, sliceId, sliceData, loading, error, loadFromPath, selectSlice],
+    [
+      summary,
+      hierarchy,
+      sliceId,
+      sliceData,
+      loading,
+      error,
+      loadFromPath,
+      selectSlice,
+      unload,
+    ],
   );
 }
 

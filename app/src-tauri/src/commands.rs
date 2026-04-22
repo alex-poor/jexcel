@@ -120,3 +120,10 @@ pub fn get_slice(
     Ok(aggregate(&wb.incidents, &filter, &years_window))
 }
 
+/// Forget the currently-loaded workbook. Used by Settings → Unload.
+#[tauri::command]
+pub fn clear_workbook(state: tauri::State<'_, AppState>) {
+    let mut guard = state.workbook.write().unwrap();
+    *guard = None;
+}
+

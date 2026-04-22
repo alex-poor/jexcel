@@ -47,3 +47,7 @@ export function getSlice(args: SliceArgs = {}): Promise<SliceData> {
     years: args.years ?? null,
   });
 }
+
+export function clearWorkbook(): Promise<void> {
+  return invoke<void>("clear_workbook");
+}

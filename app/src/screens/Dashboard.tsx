@@ -3,6 +3,7 @@ import type { Theme } from "../theme";
 import type { HierarchyNode, SliceData } from "../data/sample";
 import { findPath } from "../data/sample";
 import type { ParseSummary } from "../api/tauri";
+import type { UseUpdatesResult } from "../hooks/useUpdates";
 
 import { TopBar } from "../components/shell/TopBar";
 import { UpdateFooter } from "../components/shell/UpdateFooter";
@@ -25,6 +26,7 @@ interface Props {
   sliceData: SliceData;
   hierarchy: HierarchyNode[];
   summary: ParseSummary;
+  updates: UseUpdatesResult;
   animated?: boolean;
   onOpenSettings?: () => void;
   onNewFile?: () => void;
@@ -37,6 +39,7 @@ export function Dashboard({
   sliceData,
   hierarchy,
   summary,
+  updates,
   animated = false,
   onOpenSettings,
   onNewFile,
@@ -209,7 +212,7 @@ export function Dashboard({
         </div>
       </div>
 
-      <UpdateFooter theme={theme} />
+      <UpdateFooter theme={theme} updates={updates} />
     </div>
   );
 }

@@ -2,15 +2,25 @@ import { useState } from "react";
 import type { Theme } from "../theme";
 import { UpdateFooter } from "../components/shell/UpdateFooter";
 import { isTauri } from "../api/tauri";
+import type { UseUpdatesResult } from "../hooks/useUpdates";
+import type { LastFile } from "../lib/prefs";
 
 interface Props {
   theme: Theme;
   /** Called with an absolute path when the user picks or drops a file. */
   onPathChosen?: (path: string) => void;
   variant?: "default" | "processing";
+  updates: UseUpdatesResult;
+  lastFile?: LastFile | null;
 }
 
-export function LandingScreen({ theme, onPathChosen, variant = "default" }: Props) {
+export function LandingScreen({
+  theme,
+  onPathChosen,
+  variant = "default",
+  updates,
+  lastFile,
+}: Props) {
   const [dragging, setDragging] = useState(false);
 
   const handleDrop = (e: React.DragEvent) => {
@@ -174,21 +184,25 @@ export function LandingScreen({ theme, onPathChosen, variant = "default" }: Prop
             >
               Choose a file…
             </button>
-            <button
-              style={{
-                padding: "10px 18px",
-                background: theme.surface,
-                color: theme.ink2,
-                border: `1px solid ${theme.border}`,
-                borderRadius: 6,
-                fontSize: 14,
-                fontWeight: 500,
-                cursor: "pointer",
-                fontFamily: theme.sansFont,
-              }}
-            >
-              Use last file · Notify-11-76-226.xlsx
-            </button>
+            {lastFile && (
+              <button
+                onClick={() => onPathChosen?.(lastFile.path)}
+                title={lastFile.path}
+                style={{
+                  padding: "10px 18px",
+                  background: theme.surface,
+                  color: theme.ink2,
+                  border: `1px solid ${theme.border}`,
+                  borderRadius: 6,
+                  fontSize: 14,
+                  fontWeight: 500,
+                  cursor: "pointer",
+                  fontFamily: theme.sansFont,
+                }}
+              >
+                Use last file · {lastFile.file}
+              </button>
+            )}
           </div>
 
           <div
@@ -293,7 +307,7 @@ export function LandingScreen({ theme, onPathChosen, variant = "default" }: Prop
         )}
       </div>
 
-      <UpdateFooter theme={theme} />
+      <UpdateFooter theme={theme} updates={updates} />
     </div>
   );
 }

@@ -18,13 +18,20 @@ export interface UseUpdatesResult {
   downloadAndInstall: () => Promise<void>;
 }
 
+export interface UseUpdatesOptions {
+  /** When false, skip the automatic check on mount. Manual `recheck()`
+   *  still works. Default: true. */
+  autoCheck?: boolean;
+}
+
 // Browser-only dev fallback: never actually "up to date" because we have no
 // way to probe; showing "offline" keeps the footer neutral and honest.
 const DEV_OFFLINE: UpdateStatus = { state: "offline", currentVersion: "0.1.0" };
 
-export function useUpdates(): UseUpdatesResult {
+export function useUpdates(options: UseUpdatesOptions = {}): UseUpdatesResult {
+  const autoCheck = options.autoCheck ?? true;
   const [status, setStatus] = useState<UpdateStatus>(
-    isTauri() ? { state: "checking" } : DEV_OFFLINE,
+    isTauri() && autoCheck ? { state: "checking" } : DEV_OFFLINE,
   );
   const [lastCheckedAt, setLastCheckedAt] = useState<Date | null>(null);
   // Hold the plugin's Update object between probe and install so the
@@ -69,8 +76,8 @@ export function useUpdates(): UseUpdatesResult {
   }, []);
 
   useEffect(() => {
-    recheck();
-  }, [recheck]);
+    if (autoCheck) recheck();
+  }, [autoCheck, recheck]);
 
   const downloadAndInstall = useCallback(async () => {
     const update = pendingRef.current;

@@ -2,13 +2,66 @@ import type { ReactNode } from "react";
 import type { Theme } from "../theme";
 import { Button } from "../components/shell/Button";
 import { UpdateFooter } from "../components/shell/UpdateFooter";
+import type { UseUpdatesResult } from "../hooks/useUpdates";
+import type { ParseSummary } from "../api/tauri";
+import { usePref, type YearWindowPreset } from "../lib/prefs";
 
 interface Props {
   theme: Theme;
   onClose?: () => void;
+  summary: ParseSummary | null;
+  updates: UseUpdatesResult;
+  /** Unload the current workbook and clear the last-file record. */
+  onUnload: () => void;
 }
 
-export function SettingsScreen({ theme, onClose }: Props) {
+const YEAR_WINDOW_LABELS: Record<YearWindowPreset, string> = {
+  rolling_5: "Last 5 calendar years (rolling)",
+  rolling_3: "Last 3 years",
+  all: "All available",
+};
+
+function formatWhen(d: Date | null): string {
+  if (!d) return "never";
+  return d.toLocaleString(undefined, {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+export function SettingsScreen({ theme, onClose, summary, updates, onUnload }: Props) {
+  const [checkOnLaunch, setCheckOnLaunch] = usePref("check-on-launch", true);
+  const [yearWindow, setYearWindow] = usePref<"year-window">("year-window", "rolling_5");
+
+  const currentVersion =
+    updates.status.state === "checking" ? null : updates.status.currentVersion;
+
+  const updatesLine = (() => {
+    switch (updates.status.state) {
+      case "checking":
+        return "Checking for updates…";
+      case "upToDate":
+        return "up to date";
+      case "available":
+        return `v${updates.status.latestVersion} available`;
+      case "downloading":
+        return "downloading…";
+      case "installed":
+        return "installed · restarting";
+      case "offline":
+        return "offline";
+    }
+  })();
+  const updatesColor =
+    updates.status.state === "upToDate" || updates.status.state === "installed"
+      ? theme.accent
+      : updates.status.state === "available"
+        ? theme.harm
+        : theme.ink3;
+
   return (
     <div
       style={{
@@ -66,8 +119,29 @@ export function SettingsScreen({ theme, onClose }: Props) {
             title="Updates"
             subtitle="The app checks GitHub for a new release. No auto-update."
           >
-            <SettingRow theme={theme} label="Check on launch" control={<Toggle theme={theme} on />} />
-            <SettingRow theme={theme} label="Manual check" control={<Button theme={theme}>Check now</Button>} />
+            <SettingRow
+              theme={theme}
+              label="Check on launch"
+              control={
+                <Toggle
+                  theme={theme}
+                  on={checkOnLaunch}
+                  onToggle={() => setCheckOnLaunch(!checkOnLaunch)}
+                />
+              }
+            />
+            <SettingRow
+              theme={theme}
+              label="Manual check"
+              control={
+                <Button
+                  theme={theme}
+                  onClick={updates.recheck}
+                >
+                  {updates.status.state === "checking" ? "Checking…" : "Check now"}
+                </Button>
+              }
+            />
             <div
               style={{
                 fontSize: 12,
@@ -77,9 +151,18 @@ export function SettingsScreen({ theme, onClose }: Props) {
                 marginTop: 4,
               }}
             >
-              Current version{" "}
-              <span style={{ color: theme.ink, fontFamily: theme.monoFont }}>v0.1.0</span> · Last checked
-              22 Apr 2026, 09:14 — <span style={{ color: theme.accent }}>up to date</span>
+              {currentVersion ? (
+                <>
+                  Current version{" "}
+                  <span style={{ color: theme.ink, fontFamily: theme.monoFont }}>
+                    v{currentVersion}
+                  </span>{" "}
+                  · Last checked {formatWhen(updates.lastCheckedAt)} —{" "}
+                  <span style={{ color: updatesColor }}>{updatesLine}</span>
+                </>
+              ) : (
+                <>Last checked {formatWhen(updates.lastCheckedAt)} — {updatesLine}</>
+              )}
             </div>
           </SettingGroup>
 
@@ -90,18 +173,19 @@ export function SettingsScreen({ theme, onClose }: Props) {
           >
             <SettingRow
               theme={theme}
-              label="Mapping file"
+              label="Mapping source"
               value={
                 <code style={{ fontFamily: theme.monoFont, fontSize: 12, color: theme.ink2 }}>
-                  departments.csv · 39 rows
+                  embedded · 39 rows
                 </code>
               }
-              control={<Button theme={theme}>Open mapping</Button>}
+              control={<Button theme={theme} disabled>Open mapping</Button>}
             />
             <SettingRow
               theme={theme}
-              label="Reset to shipped defaults"
-              control={<Button theme={theme}>Reset</Button>}
+              label="Override with a custom mapping"
+              value={<span style={{ fontSize: 12, color: theme.ink3 }}>Not yet supported — raise an issue if you need this.</span>}
+              control={<Button theme={theme} disabled>Reset</Button>}
             />
           </SettingGroup>
 
@@ -110,9 +194,13 @@ export function SettingsScreen({ theme, onClose }: Props) {
               theme={theme}
               label="Current file"
               value={
-                <code style={{ fontFamily: theme.monoFont, fontSize: 12, color: theme.ink2 }}>
-                  Notify-11-76-226.xlsx
-                </code>
+                summary ? (
+                  <code style={{ fontFamily: theme.monoFont, fontSize: 12, color: theme.ink2 }}>
+                    {summary.file} · {summary.totalRows.toLocaleString()} rows · parsed {summary.parsedAt}
+                  </code>
+                ) : (
+                  <span style={{ fontSize: 12, color: theme.ink3 }}>No file loaded</span>
+                )
               }
             />
             <SettingRow
@@ -120,6 +208,8 @@ export function SettingsScreen({ theme, onClose }: Props) {
               label="Default year window"
               control={
                 <select
+                  value={yearWindow}
+                  onChange={(e) => setYearWindow(e.target.value as YearWindowPreset)}
                   style={{
                     padding: "6px 10px",
                     fontSize: 13,
@@ -130,13 +220,20 @@ export function SettingsScreen({ theme, onClose }: Props) {
                     color: theme.ink,
                   }}
                 >
-                  <option>Last 5 calendar years (rolling)</option>
-                  <option>Last 3 years</option>
-                  <option>All available</option>
+                  {(Object.keys(YEAR_WINDOW_LABELS) as YearWindowPreset[]).map((k) => (
+                    <option key={k} value={k}>
+                      {YEAR_WINDOW_LABELS[k]}
+                    </option>
+                  ))}
                 </select>
               }
             />
-            <SettingRow theme={theme} label="Clear loaded data" control={<Button theme={theme}>Unload</Button>} />
+            <SettingRow
+              theme={theme}
+              label="Clear loaded data"
+              value={<span style={{ fontSize: 12, color: theme.ink3 }}>Removes the in-memory parse and forgets the last-file record.</span>}
+              control={<Button theme={theme} onClick={onUnload} disabled={!summary}>Unload</Button>}
+            />
           </SettingGroup>
 
           <SettingGroup theme={theme} title="About">
@@ -153,7 +250,7 @@ export function SettingsScreen({ theme, onClose }: Props) {
           </SettingGroup>
         </div>
       </div>
-      <UpdateFooter theme={theme} />
+      <UpdateFooter theme={theme} updates={updates} />
     </div>
   );
 }
@@ -227,9 +324,10 @@ function SettingRow({
   );
 }
 
-function Toggle({ theme, on }: { theme: Theme; on?: boolean }) {
+function Toggle({ theme, on, onToggle }: { theme: Theme; on: boolean; onToggle?: () => void }) {
   return (
     <div
+      onClick={onToggle}
       style={{
         width: 34,
         height: 20,
@@ -237,6 +335,7 @@ function Toggle({ theme, on }: { theme: Theme; on?: boolean }) {
         background: on ? theme.accent : theme.borderStrong,
         position: "relative",
         transition: "background .15s",
+        cursor: onToggle ? "pointer" : "default",
       }}
     >
       <div

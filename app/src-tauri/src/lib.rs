@@ -22,6 +22,7 @@ pub fn run() {
             commands::parse_summary,
             commands::get_hierarchy,
             commands::get_slice,
+            commands::clear_workbook,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
