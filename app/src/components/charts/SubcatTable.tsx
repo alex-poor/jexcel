@@ -31,14 +31,19 @@ export function SubcatTable({ data, years, theme, density }: Props) {
     [data, years],
   );
 
-  const maxPct = useMemo(() => {
-    let m = 0;
-    cats.forEach((c) =>
+  // Per-row scaling: each category's bars normalise against that row's peak
+  // rather than a single global max. Stops infrequent categories from
+  // looking identically-flat all the way across.
+  const rowMaxPct = useMemo(() => {
+    const m: Record<string, number> = {};
+    cats.forEach((c) => {
+      let peak = 0;
       years.forEach((y) => {
         const v = (data[y]?.[c] || 0) / (yearTotals[y] || 1);
-        if (v > m) m = v;
-      }),
-    );
+        if (v > peak) peak = v;
+      });
+      m[c] = peak;
+    });
     return m;
   }, [cats, years, data, yearTotals]);
 
@@ -102,7 +107,8 @@ export function SubcatTable({ data, years, theme, density }: Props) {
           {years.map((y) => {
             const v = data[y]?.[cat] || 0;
             const pct = v / (yearTotals[y] || 1);
-            const w = maxPct > 0 ? (pct / maxPct) * 100 : 0;
+            const peak = rowMaxPct[cat] || 0;
+            const w = peak > 0 ? (pct / peak) * 100 : 0;
             return (
               <div
                 key={y}

@@ -237,10 +237,20 @@ export function SettingsScreen({ theme, onClose, summary, updates, onUnload }: P
           </SettingGroup>
 
           <SettingGroup theme={theme} title="About">
-            <div style={{ padding: "6px 4px", fontSize: 13, color: theme.ink2, lineHeight: 1.55 }}>
-              Incident Reporting is a desktop-only tool for hospital H&amp;S teams. It runs offline, stores
-              no data outside the file you load, and makes no network calls except optional release checks
-              to GitHub.
+            <div style={{ padding: "6px 4px", fontSize: 13, color: theme.ink2, lineHeight: 1.6 }}>
+              This app was forged in a disused laundry cupboard by a consortium of seventeen
+              heritage-breed hamsters and one sleep-deprived risk manager who had been
+              thwarted, one too many times, by a pivot table with opinions. When the
+              spreadsheet refused to ungroup for the fourth consecutive Tuesday, the decision
+              was made: ingest the chaos, banish the merged cells, and produce reporting so
+              reliable it could be framed and hung in a boardroom next to a very serious
+              painting of a ship.
+              <br /><br />
+              No hamsters were harmed in its production, although two developed strong
+              opinions about mixed date formats and now refuse to look at anything older
+              than ISO&nbsp;9601. The software is offered to hospitals on the understanding
+              that any incident involving a hamster, a laundry cupboard, or a pivot table
+              with opinions must be logged in the usual way.
             </div>
             <div style={{ display: "flex", gap: 16, fontSize: 12, color: theme.accent, marginTop: 8 }}>
               <span>Release notes</span>

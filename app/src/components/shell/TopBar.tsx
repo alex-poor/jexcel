@@ -78,9 +78,45 @@ export function TopBar({
         <Button theme={theme} onClick={onNewFile}>
           Load new file
         </Button>
-        <Button theme={theme} onClick={onOpenSettings} ghost>
-          ⚙
-        </Button>
+        <button
+          onClick={onOpenSettings}
+          title="Settings"
+          aria-label="Settings"
+          style={{
+            width: 34,
+            height: 34,
+            padding: 0,
+            background: "transparent",
+            border: `1px solid transparent`,
+            borderRadius: 6,
+            cursor: "pointer",
+            color: theme.ink2,
+            display: "grid",
+            placeItems: "center",
+            transition: "background .12s, color .12s, border-color .12s",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = theme.surfaceAlt;
+            e.currentTarget.style.color = theme.ink;
+            e.currentTarget.style.borderColor = theme.border;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.color = theme.ink2;
+            e.currentTarget.style.borderColor = "transparent";
+          }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" />
+            <path
+              d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
       </div>
     </div>
   );

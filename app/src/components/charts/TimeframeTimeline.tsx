@@ -18,7 +18,7 @@ export function TimeframeTimeline({ data, years, theme, height = 260, animated =
   // Floor rowH at 14 so labels never overlap when we're showing lots of years.
   // H is computed from rowH below, so the SVG grows vertically if needed.
   const rowH = Math.max(14, Math.min(38, (height - 60) / years.length));
-  const pad = { t: 18, r: 80, b: 34, l: 56 };
+  const pad = { t: 18, r: 80, b: 34, l: 72 };
   const totals = years.map((y) => (data[y]?.lag || 0) + (data[y]?.closure || 0));
   const max = Math.max(...totals, 10);
   const niceMax = Math.ceil(max / 20) * 20;
@@ -86,7 +86,11 @@ export function TimeframeTimeline({ data, years, theme, height = 260, animated =
                 fontWeight={600}
               >
                 {yr}
-                {partial ? " · YTD" : ""}
+                {partial && (
+                  <tspan fontSize="9" fontWeight={500} fill={theme.ink3} dx={4}>
+                    YTD
+                  </tspan>
+                )}
               </text>
               {!row && (
                 <text
