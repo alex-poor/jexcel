@@ -9,26 +9,44 @@ function formatClock(d: Date): string {
   return d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
 }
 
+function formatBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`;
+  return `${(n / 1024 / 1024).toFixed(1)} MB`;
+}
+
 export function UpdateFooter({ theme }: Props) {
-  const { status, lastCheckedAt, checking, recheck, openRelease } = useUpdates();
+  const { status, lastCheckedAt, recheck, downloadAndInstall } = useUpdates();
 
   const label = (() => {
-    if (checking && !status) return "Checking for updates…";
-    if (!status) return "";
     switch (status.state) {
+      case "checking":
+        return "Checking for updates…";
       case "upToDate":
         return `You're on v${status.currentVersion} · up to date`;
       case "available":
         return `Update available — v${status.latestVersion} (you're on v${status.currentVersion})`;
+      case "downloading": {
+        const total = status.total;
+        const pct = total ? Math.round((status.downloaded / total) * 100) : null;
+        return total
+          ? `Downloading v${status.latestVersion} · ${formatBytes(status.downloaded)} / ${formatBytes(total)}${pct != null ? ` · ${pct}%` : ""}`
+          : `Downloading v${status.latestVersion} · ${formatBytes(status.downloaded)}`;
+      }
+      case "installed":
+        return `Installed v${status.latestVersion} · restarting…`;
       case "offline":
         return `Offline — last checked ${lastCheckedAt ? formatClock(lastCheckedAt) : "never"}`;
     }
   })();
 
   const dot = (() => {
-    if (!status) return theme.ink3;
     switch (status.state) {
+      case "checking":
+      case "downloading":
+        return theme.lag;
       case "upToDate":
+      case "installed":
         return theme.accent;
       case "available":
         return theme.harm;
@@ -37,7 +55,10 @@ export function UpdateFooter({ theme }: Props) {
     }
   })();
 
-  const textColor = status?.state === "available" ? theme.accentInk : theme.ink3;
+  const textColor =
+    status.state === "available" || status.state === "downloading"
+      ? theme.accentInk
+      : theme.ink3;
 
   return (
     <div
@@ -56,9 +77,9 @@ export function UpdateFooter({ theme }: Props) {
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <div style={{ width: 6, height: 6, borderRadius: 3, background: dot }} />
         <span style={{ color: textColor }}>{label}</span>
-        {status?.state === "available" && (
+        {status.state === "available" && (
           <a
-            onClick={openRelease}
+            onClick={downloadAndInstall}
             style={{
               color: theme.accent,
               textDecoration: "none",
@@ -67,7 +88,7 @@ export function UpdateFooter({ theme }: Props) {
               cursor: "pointer",
             }}
           >
-            download →
+            download &amp; install →
           </a>
         )}
       </div>
@@ -77,12 +98,12 @@ export function UpdateFooter({ theme }: Props) {
           onClick={recheck}
           style={{
             color: theme.ink3,
-            cursor: "pointer",
-            opacity: checking ? 0.5 : 1,
+            cursor: status.state === "checking" ? "default" : "pointer",
+            opacity: status.state === "checking" ? 0.5 : 1,
           }}
-          title="Re-poll GitHub for a newer release"
+          title="Re-poll the release manifest"
         >
-          {checking ? "Checking…" : "Check for updates"}
+          {status.state === "checking" ? "Checking…" : "Check for updates"}
         </span>
       </div>
     </div>

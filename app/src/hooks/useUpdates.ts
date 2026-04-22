@@ -1,51 +1,126 @@
-/** Poll the backend for update status on mount + on manual trigger.
- *
- * Silent-fail by contract (design brief §7). The only way errors surface
- * is a flip to `offline` — there is no throwing path out of this hook.
+/** Wraps `probeForUpdate` + `downloadAndInstall` in a UI-shaped state
+ *  machine for the footer. Silent-fail on network errors (design brief §7).
  */
 
-import { useCallback, useEffect, useState } from "react";
-import { checkForUpdates, openReleasePage, type UpdateStatus } from "../api/updates";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  probeForUpdate,
+  relaunchApp,
+  type UpdateStatus,
+} from "../api/updates";
+import { isTauri } from "../api/tauri";
 
 export interface UseUpdatesResult {
-  status: UpdateStatus | null;
+  status: UpdateStatus;
   lastCheckedAt: Date | null;
-  checking: boolean;
-  /** Re-poll now (user clicked "Check for updates"). */
   recheck: () => void;
-  /** Open the release page in the OS default browser. No-op if not Available. */
-  openRelease: () => void;
+  /** Download + install the currently-known update, then relaunch. */
+  downloadAndInstall: () => Promise<void>;
 }
 
-export function useUpdates(): UseUpdatesResult {
-  const [status, setStatus] = useState<UpdateStatus | null>(null);
-  const [lastCheckedAt, setLastCheckedAt] = useState<Date | null>(null);
-  const [checking, setChecking] = useState(false);
+// Browser-only dev fallback: never actually "up to date" because we have no
+// way to probe; showing "offline" keeps the footer neutral and honest.
+const DEV_OFFLINE: UpdateStatus = { state: "offline", currentVersion: "0.1.0" };
 
-  const run = useCallback(async () => {
-    setChecking(true);
+export function useUpdates(): UseUpdatesResult {
+  const [status, setStatus] = useState<UpdateStatus>(
+    isTauri() ? { state: "checking" } : DEV_OFFLINE,
+  );
+  const [lastCheckedAt, setLastCheckedAt] = useState<Date | null>(null);
+  // Hold the plugin's Update object between probe and install so the
+  // download button doesn't have to re-probe.
+  const pendingRef = useRef<Awaited<ReturnType<typeof probeForUpdate>>>(null);
+
+  const recheck = useCallback(async () => {
+    if (!isTauri()) {
+      setStatus(DEV_OFFLINE);
+      setLastCheckedAt(new Date());
+      return;
+    }
+    setStatus({ state: "checking" });
     try {
-      const s = await checkForUpdates();
-      setStatus(s);
-    } catch {
-      // checkForUpdates itself never throws in practice (Rust side collapses
-      // errors to Offline), but keep this defensive.
-      setStatus({ state: "offline", currentVersion: "0.0.0" });
+      const update = await probeForUpdate();
+      if (update == null) {
+        // Plugin returns null when the installed version matches the
+        // manifest — i.e. genuinely up to date.
+        setStatus({ state: "upToDate", currentVersion: appVersion() });
+        pendingRef.current = null;
+      } else {
+        pendingRef.current = update;
+        setStatus({
+          state: "available",
+          currentVersion: update.currentVersion,
+          latestVersion: update.version,
+          notes: update.body ?? undefined,
+        });
+      }
+    } catch (e) {
+      // Network error / signature mismatch / missing manifest — all collapse
+      // to Offline so the UI never shows a scary modal.
+      setStatus({
+        state: "offline",
+        currentVersion: appVersion(),
+        reason: String(e),
+      });
+      pendingRef.current = null;
     } finally {
       setLastCheckedAt(new Date());
-      setChecking(false);
     }
   }, []);
 
   useEffect(() => {
-    run();
-  }, [run]);
+    recheck();
+  }, [recheck]);
 
-  const openRelease = useCallback(() => {
-    if (status?.state === "available") {
-      openReleasePage(status.releaseUrl);
+  const downloadAndInstall = useCallback(async () => {
+    const update = pendingRef.current;
+    if (!update) return;
+    const currentVersion = update.currentVersion;
+    const latestVersion = update.version;
+    try {
+      let total: number | null = null;
+      let downloaded = 0;
+      setStatus({
+        state: "downloading",
+        currentVersion,
+        latestVersion,
+        downloaded: 0,
+        total: null,
+      });
+      await update.downloadAndInstall((e) => {
+        if (e.event === "Started") {
+          total = e.data.contentLength ?? null;
+        } else if (e.event === "Progress") {
+          downloaded += e.data.chunkLength;
+          setStatus({
+            state: "downloading",
+            currentVersion,
+            latestVersion,
+            downloaded,
+            total,
+          });
+        }
+      });
+      setStatus({ state: "installed", currentVersion, latestVersion });
+      // Give the user a moment to see the confirmation before restart.
+      setTimeout(() => void relaunchApp(), 800);
+    } catch (e) {
+      setStatus({
+        state: "offline",
+        currentVersion,
+        reason: `install failed: ${e}`,
+      });
     }
-  }, [status]);
+  }, []);
 
-  return { status, lastCheckedAt, checking, recheck: run, openRelease };
+  return { status, lastCheckedAt, recheck, downloadAndInstall };
+}
+
+/** Best-effort read of the compiled app version for display while offline.
+ *  The authoritative source is `update.currentVersion` — this is only for
+ *  the empty-state before we've successfully probed. */
+function appVersion(): string {
+  // Vite injects nothing reliable here; the plugin reports a real value
+  // whenever it's called, and that takes over once we're in Tauri mode.
+  return "0.1.0";
 }

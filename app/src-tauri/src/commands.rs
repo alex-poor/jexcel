@@ -9,7 +9,6 @@ use crate::ingest::{load_workbook, LoadResult};
 use crate::mapping::DepartmentMapping;
 use crate::report::{aggregate, build_hierarchy, default_years_window, years_in_data, Filter};
 use crate::types::{HierarchyNode, Incident, ParseSummary, SliceData};
-use crate::updates::{check as check_updates_inner, UpdateStatus};
 
 pub struct AppState {
     pub mapping: DepartmentMapping,
@@ -121,7 +120,3 @@ pub fn get_slice(
     Ok(aggregate(&wb.incidents, &filter, &years_window))
 }
 
-#[tauri::command]
-pub async fn check_for_updates() -> UpdateStatus {
-    check_updates_inner().await
-}

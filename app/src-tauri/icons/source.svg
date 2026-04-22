@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <rect x="0" y="0" width="1024" height="1024" rx="180" ry="180" fill="#0b7a74"/>
+  <!-- stylised I — body + serifs, built from rects so fonts don't matter -->
+  <rect x="432" y="224" width="160" height="576" rx="14" ry="14" fill="#ffffff"/>
+  <rect x="320" y="224" width="384" height="72" rx="14" ry="14" fill="#ffffff"/>
+  <rect x="320" y="728" width="384" height="72" rx="14" ry="14" fill="#ffffff"/>
+</svg>

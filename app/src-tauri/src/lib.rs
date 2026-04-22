@@ -3,7 +3,6 @@ pub mod ingest;
 pub mod mapping;
 pub mod report;
 pub mod types;
-pub mod updates;
 
 use commands::AppState;
 
@@ -15,13 +14,14 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .manage(state)
         .invoke_handler(tauri::generate_handler![
             commands::parse_workbook,
             commands::parse_summary,
             commands::get_hierarchy,
             commands::get_slice,
-            commands::check_for_updates,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
