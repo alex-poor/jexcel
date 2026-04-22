@@ -1,6 +1,7 @@
 import type { Theme } from "../../theme";
 import { Pill } from "./Pill";
 import { Button } from "./Button";
+import { isTauri } from "../../api/tauri";
 
 type Density = "comfortable" | "compact";
 
@@ -36,8 +37,31 @@ export function TopBar({
         alignItems: "center",
         justifyContent: "space-between",
         gap: 12,
+        position: "relative",
       }}
     >
+      {!isTauri() && (
+        <div
+          title="Running in browser dev mode — charts show synthetic mock data. Use `npm run tauri dev` to load a real workbook."
+          style={{
+            position: "absolute",
+            top: 0,
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: theme.harm,
+            color: "#fff",
+            fontSize: 10,
+            fontWeight: 600,
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+            padding: "2px 10px",
+            borderRadius: "0 0 4px 4px",
+            fontFamily: theme.sansFont,
+          }}
+        >
+          Sample data · browser dev mode
+        </div>
+      )}
       <div style={{ minWidth: 0 }}>
         <div
           style={{

@@ -67,12 +67,16 @@ export const SAMPLE: SampleShape = {
       2025: { ohs: 0.64, haz: 0.36 },
       2026: { ohs: 0.62, haz: 0.38 },
     },
+    // Proportions modelled on the real Notify dataset (Sharps climbing while
+    // Needlestick disappears from 2024, etc.), scaled up to this mock's
+    // larger org-wide totals. The per-row SubcatTable bars need year-over-
+    // year variance to show anything interesting — keep it spiky, not flat.
     subcat: {
-      2022: { "Sharps Injury": 465, "Slip / Trip / Fall": 128, "Manual Handling": 112, "Violence & Aggression": 89, "Chemical Exposure": 54, "Other": 183 },
-      2023: { "Sharps Injury": 502, "Slip / Trip / Fall": 146, "Manual Handling": 128, "Violence & Aggression": 104, "Chemical Exposure": 61, "Other": 204 },
-      2024: { "Sharps Injury": 548, "Slip / Trip / Fall": 151, "Manual Handling": 133, "Violence & Aggression": 114, "Chemical Exposure": 58, "Other": 204 },
-      2025: { "Sharps Injury": 489, "Slip / Trip / Fall": 140, "Manual Handling": 121, "Violence & Aggression": 98, "Chemical Exposure": 52, "Other": 194 },
-      2026: { "Sharps Injury": 287, "Slip / Trip / Fall": 82, "Manual Handling": 71, "Violence & Aggression": 61, "Chemical Exposure": 31, "Other": 117 },
+      2022: { "Sharps Injury": 182, "Manual Handling": 86, "Slip / Trip / Fall": 97, "Psychological": 107, "Exposure": 54, "Needlestick": 64, "Patient-Related Manual Handling": 43, "Struck By Object": 32, "Superficial Injury": 64, "Other": 302 },
+      2023: { "Sharps Injury": 245, "Manual Handling": 145, "Slip / Trip / Fall": 103, "Psychological": 88, "Exposure": 114, "Needlestick": 23, "Patient-Related Manual Handling": 22, "Struck By Object": 114, "Superficial Injury": 91, "Other": 200 },
+      2024: { "Sharps Injury": 264, "Manual Handling": 209, "Slip / Trip / Fall": 110, "Psychological": 55, "Exposure": 77, "Needlestick": 0, "Patient-Related Manual Handling": 55, "Struck By Object": 66, "Superficial Injury": 88, "Other": 284 },
+      2025: { "Sharps Injury": 195, "Manual Handling": 152, "Slip / Trip / Fall": 76, "Psychological": 120, "Exposure": 87, "Needlestick": 0, "Patient-Related Manual Handling": 65, "Struck By Object": 65, "Superficial Injury": 22, "Other": 312 },
+      2026: { "Sharps Injury": 93, "Manual Handling": 74, "Slip / Trip / Fall": 44, "Psychological": 19, "Exposure": 93, "Needlestick": 0, "Patient-Related Manual Handling": 19, "Struck By Object": 56, "Superficial Injury": 37, "Other": 214 },
     },
     timeframe: {
       2022: { lag: 12.4, closure: 88.2 },
@@ -130,12 +134,15 @@ export const SAMPLE: SampleShape = {
         2025: { ohs: 0.76, haz: 0.24 },
         2026: { ohs: 0.74, haz: 0.26 },
       },
+      // Theatre Suite: sharps-dominant (30-40% range), needlestick dies off
+      // after 2023, manual handling climbs 2022→2024 then eases. More varied
+      // than the previous flat mock so the table actually tells a story.
       subcat: {
-        2022: { "Sharps Injury": 91, "Chemical Exposure": 12, "Manual Handling": 11, "Slip / Trip / Fall": 10, "Violence & Aggression": 4, "Other": 10 },
-        2023: { "Sharps Injury": 98, "Chemical Exposure": 14, "Manual Handling": 12, "Slip / Trip / Fall": 9, "Violence & Aggression": 3, "Other": 8 },
-        2024: { "Sharps Injury": 108, "Chemical Exposure": 13, "Manual Handling": 12, "Slip / Trip / Fall": 11, "Violence & Aggression": 3, "Other": 8 },
-        2025: { "Sharps Injury": 75, "Chemical Exposure": 11, "Manual Handling": 9, "Slip / Trip / Fall": 8, "Violence & Aggression": 2, "Other": 7 },
-        2026: { "Sharps Injury": 41, "Chemical Exposure": 7, "Manual Handling": 6, "Slip / Trip / Fall": 4, "Violence & Aggression": 1, "Other": 4 },
+        2022: { "Sharps Injury": 48, "Manual Handling": 18, "Slip / Trip / Fall": 15, "Psychological": 8, "Exposure": 15, "Struck By Object": 6, "Needlestick": 10, "Other": 18 },
+        2023: { "Sharps Injury": 58, "Manual Handling": 22, "Slip / Trip / Fall": 12, "Psychological": 6, "Exposure": 18, "Struck By Object": 8, "Needlestick": 3, "Other": 17 },
+        2024: { "Sharps Injury": 65, "Manual Handling": 30, "Slip / Trip / Fall": 12, "Psychological": 4, "Exposure": 14, "Struck By Object": 10, "Needlestick": 0, "Other": 20 },
+        2025: { "Sharps Injury": 44, "Manual Handling": 22, "Slip / Trip / Fall": 8, "Psychological": 8, "Exposure": 12, "Struck By Object": 6, "Needlestick": 0, "Other": 12 },
+        2026: { "Sharps Injury": 20, "Manual Handling": 12, "Slip / Trip / Fall": 5, "Psychological": 3, "Exposure": 8, "Struck By Object": 4, "Needlestick": 0, "Other": 11 },
       },
       timeframe: {
         2022: { lag: 9.8, closure: 92.1 },
